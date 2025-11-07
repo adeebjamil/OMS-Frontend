@@ -230,8 +230,17 @@ export default function DocumentsPage() {
       loadDocuments();
       alert('Document uploaded successfully!');
     } catch (error: any) {
-      console.error('Upload error:', error);
-      alert(error.response?.data?.message || 'Failed to upload document');
+      console.error('❌ Upload error:', error);
+      console.error('Response:', error.response);
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Message:', error.message);
+      
+      const errorMessage = error.response?.data?.message 
+        || error.message 
+        || 'Failed to upload document';
+      
+      alert(`Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
     }
