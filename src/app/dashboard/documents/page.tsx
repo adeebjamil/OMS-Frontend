@@ -251,6 +251,13 @@ export default function DocumentsPage() {
     if (!selectedDoc) return;
 
     try {
+      console.log('📤 Sharing document:', {
+        documentId: selectedDoc._id,
+        userId: shareData.userId,
+        accessLevel: shareData.accessLevel,
+        currentSharedWith: selectedDoc.sharedWith
+      });
+      
       const updatedSharedWith = [
         ...(selectedDoc.sharedWith || []),
         {
@@ -259,15 +266,17 @@ export default function DocumentsPage() {
         }
       ];
 
-      await documentAPI.updateDocument(selectedDoc._id, {
+      const response = await documentAPI.updateDocument(selectedDoc._id, {
         sharedWith: updatedSharedWith,
       });
 
+      console.log('✅ Document shared successfully:', response.data);
       setShowShareModal(false);
       setShareData({ userId: '', accessLevel: 'view' });
       loadDocuments();
       alert('Document shared successfully!');
     } catch (error: any) {
+      console.error('❌ Failed to share document:', error);
       alert(error.response?.data?.message || 'Failed to share document');
     }
   };
@@ -295,11 +304,19 @@ export default function DocumentsPage() {
     }
   };
 
-  const handleViewDocument = (doc: Document) => {
-    // Open in new tab for viewing
-    const token = localStorage.getItem('token');
-    const viewUrl = `${doc.fileUrl}?token=${token}`;
-    window.open(viewUrl, '_blank');
+  const handleViewDocument = async (doc: Document) => {
+    try {
+      // Open document through backend API which handles Cloudinary authentication
+      const token = localStorage.getItem('token');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const viewUrl = `${apiUrl}/api/documents/${doc._id}/file`;
+      
+      // Open in new tab with token for authentication
+      window.open(viewUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to view document:', error);
+      alert('Failed to view document. Please try again.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -314,11 +331,21 @@ export default function DocumentsPage() {
 
   const handleTogglePublic = async (doc: Document) => {
     try {
-      await documentAPI.updateDocument(doc._id, {
+      console.log('🔒 Toggling document public status:', {
+        id: doc._id,
+        currentStatus: doc.isPublic,
+        newStatus: !doc.isPublic
+      });
+      
+      const response = await documentAPI.updateDocument(doc._id, {
         isPublic: !doc.isPublic,
       });
+      
+      console.log('✅ Document status updated:', response.data);
+      alert(`Document is now ${!doc.isPublic ? 'public' : 'private'}`);
       loadDocuments();
     } catch (error: any) {
+      console.error('❌ Failed to toggle document status:', error);
       alert(error.response?.data?.message || 'Failed to update document');
     }
   };
