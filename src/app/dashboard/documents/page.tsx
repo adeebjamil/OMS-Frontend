@@ -91,6 +91,7 @@ export default function DocumentsPage() {
     tags: '',
     expiryDate: '',
     file: null as File | null,
+    selectedUsers: [] as string[], // Add selected users array
   });
   const [shareData, setShareData] = useState({
     userId: '',
@@ -206,11 +207,22 @@ export default function DocumentsPage() {
       if (formData.expiryDate) {
         uploadFormData.append('expiryDate', formData.expiryDate);
       }
+      
+      // Add selected users if not public
+      if (!formData.isPublic && formData.selectedUsers.length > 0) {
+        const sharedWith = formData.selectedUsers.map(userId => ({
+          userId: userId,
+          accessLevel: 'view'
+        }));
+        uploadFormData.append('sharedWith', JSON.stringify(sharedWith));
+      }
 
       console.log('📤 Uploading file:', {
         name: formData.file.name,
         size: formData.file.size,
-        type: formData.file.type
+        type: formData.file.type,
+        isPublic: formData.isPublic,
+        selectedUsers: formData.selectedUsers.length
       });
 
       await documentAPI.uploadDocument(uploadFormData);
@@ -313,6 +325,7 @@ export default function DocumentsPage() {
       tags: '',
       expiryDate: '',
       file: null,
+      selectedUsers: [],
     });
   };
 
@@ -809,19 +822,72 @@ export default function DocumentsPage() {
                     disabled={uploading}
                   />
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <input
-                    type="checkbox"
-                    id="isPublic"
-                    checked={formData.isPublic}
-                    onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
-                    disabled={uploading}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="isPublic" className="text-sm font-semibold text-blue-900 cursor-pointer">
-                    <Unlock className="h-4 w-4 inline mr-1" />
-                    Make this document public (accessible to all interns)
-                  </label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <input
+                      type="checkbox"
+                      id="isPublic"
+                      checked={formData.isPublic}
+                      onChange={(e) => {
+                        const isPublic = e.target.checked;
+                        setFormData({ 
+                          ...formData, 
+                          isPublic,
+                          selectedUsers: isPublic ? [] : formData.selectedUsers // Clear selection if public
+                        });
+                      }}
+                      disabled={uploading}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="isPublic" className="text-sm font-semibold text-blue-900 cursor-pointer">
+                      <Unlock className="h-4 w-4 inline mr-1" />
+                      Make this document public (accessible to all interns)
+                    </label>
+                  </div>
+                  
+                  {!formData.isPublic && currentUser?.role === 'admin' && (
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                        <Users className="h-4 w-4 inline mr-1" />
+                        Share with specific interns (optional)
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">Select interns who can access this document</p>
+                      <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 rounded p-2 bg-white">
+                        {users.filter(u => u.role === 'intern').map(user => (
+                          <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedUsers.includes(user._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    selectedUsers: [...formData.selectedUsers, user._id]
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    selectedUsers: formData.selectedUsers.filter(id => id !== user._id)
+                                  });
+                                }
+                              }}
+                              disabled={uploading}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">{user.name} ({user.email})</span>
+                          </label>
+                        ))}
+                        {users.filter(u => u.role === 'intern').length === 0 && (
+                          <p className="text-xs text-gray-400 p-2">No interns available</p>
+                        )}
+                      </div>
+                      {formData.selectedUsers.length > 0 && (
+                        <p className="text-xs text-green-600 mt-2">
+                          {formData.selectedUsers.length} intern(s) selected
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 pt-4">
                   <Button type="submit" className="flex-1" disabled={uploading}>
