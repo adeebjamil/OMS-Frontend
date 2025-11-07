@@ -31,7 +31,7 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-6">
@@ -96,7 +96,7 @@ export default function SupportPage() {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Contact Form */}
           <Card className="border-0 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+            <CardHeader className="bg-linear-to-r from-blue-600 to-blue-700 text-white">
               <CardTitle className="flex items-center gap-2">
                 <Send className="h-5 w-5" />
                 Send us a Message
@@ -172,7 +172,7 @@ export default function SupportPage() {
           <div className="space-y-6">
             {/* FAQ */}
             <Card className="border-0 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+              <CardHeader className="bg-linear-to-r from-purple-600 to-purple-700 text-white">
                 <CardTitle className="flex items-center gap-2">
                   <HelpCircle className="h-5 w-5" />
                   Frequently Asked Questions
