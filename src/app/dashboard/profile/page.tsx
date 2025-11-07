@@ -151,11 +151,28 @@ export default function ProfilePage() {
   const loadStats = async () => {
     try {
       if (currentUser?.role === 'intern') {
+        console.log('📊 Loading intern stats...');
         const res = await dashboardAPI.getInternDashboard();
-        setStats(res.data.data || {});
+        console.log('✅ Stats loaded:', res.data.data);
+        
+        const dashboardData = res.data.data || {};
+        
+        // Map the nested structure to flat structure for easier access
+        const mappedStats = {
+          totalTasks: dashboardData.tasks?.total || 0,
+          completedTasks: dashboardData.tasks?.completed || 0,
+          pendingTasks: dashboardData.tasks?.pending || 0,
+          totalWorkLogs: dashboardData.workLogs?.total || 0,
+          totalHours: dashboardData.workLogs?.totalHours || 0,
+          averageRating: dashboardData.workLogs?.averageRating ? parseFloat(dashboardData.workLogs.averageRating) : undefined,
+          attendanceRate: dashboardData.attendance?.attendancePercentage ? parseFloat(dashboardData.attendance.attendancePercentage) : undefined,
+        };
+        
+        console.log('📈 Mapped stats:', mappedStats);
+        setStats(mappedStats);
       }
     } catch (error) {
-      console.error('Failed to load stats:', error);
+      console.error('❌ Failed to load stats:', error);
     }
   };
 
@@ -233,8 +250,8 @@ export default function ProfilePage() {
       
       setEditing(false);
       
-      // Reload profile to ensure all data is fresh
-      await loadProfile();
+      // Reload profile and stats to ensure all data is fresh
+      await Promise.all([loadProfile(), loadStats()]);
       
       alert('Profile updated successfully!');
     } catch (error: any) {
