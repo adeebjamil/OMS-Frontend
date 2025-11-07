@@ -195,7 +195,8 @@ export default function PrivacyPage() {
                   <p className="text-gray-700"><strong>Lovosis Technology Pvt. Ltd.</strong></p>
                   <p className="text-gray-700">Email: <a href="mailto:privacy@lovosis.com" className="text-blue-600 hover:underline">privacy@lovosis.com</a></p>
                   <p className="text-gray-700">Phone: +91 98765 43210</p>
-                  <p className="text-gray-700">Address: 123 Tech Park, Innovation Street, Bangalore, Karnataka 560001, India</p>
+                  <p className="text-gray-700">Address: 4-72/2, Swathi Building, 3rd Floor, Opp Singapura Garden, 1st Main, Lakshmipura Main Rd, Abbigere, Bengaluru, Karnataka 560013, India</p>
+                  <p className="text-gray-700">Hours: Monday - Saturday, 9:00 AM - 6:00 PM</p>
                 </div>
               </section>
             </div>

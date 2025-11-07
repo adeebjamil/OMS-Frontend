@@ -213,8 +213,7 @@ export default function SupportPage() {
                   <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-1">Office Hours</h4>
-                    <p className="text-sm text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
-                    <p className="text-sm text-gray-600">Saturday: 10:00 AM - 2:00 PM</p>
+                    <p className="text-sm text-gray-600">Monday - Saturday: 9:00 AM - 6:00 PM</p>
                     <p className="text-sm text-gray-600">Sunday: Closed</p>
                   </div>
                 </div>
@@ -225,8 +224,10 @@ export default function SupportPage() {
                     <h4 className="font-semibold text-gray-900 mb-1">Office Location</h4>
                     <p className="text-sm text-gray-600">
                       Lovosis Technology Pvt. Ltd.<br />
-                      123 Tech Park, Innovation Street<br />
-                      Bangalore, Karnataka 560001<br />
+                      4-72/2, Swathi Building, 3rd Floor<br />
+                      Opp Singapura Garden, 1st Main<br />
+                      Lakshmipura Main Rd, Abbigere<br />
+                      Bengaluru, Karnataka 560013<br />
                       India
                     </p>
                   </div>

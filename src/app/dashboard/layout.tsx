@@ -222,9 +222,9 @@ export default function DashboardLayout({
             <div className="flex items-center justify-between text-sm text-gray-600">
               <p>© 2025 OfficePro. All rights reserved.</p>
               <div className="flex items-center gap-6">
-                <a href="#" className="hover:text-blue-600 transition-colors">Support</a>
-                <a href="#" className="hover:text-blue-600 transition-colors">Privacy</a>
-                <a href="#" className="hover:text-blue-600 transition-colors">Terms</a>
+                <Link href="/support" className="hover:text-blue-600 transition-colors">Support</Link>
+                <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</Link>
+                <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
               </div>
             </div>
           </div>
