@@ -82,6 +82,7 @@ export default function DocumentsPage() {
   const [filterAccess, setFilterAccess] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [uploading, setUploading] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -181,6 +182,18 @@ export default function DocumentsPage() {
       return;
     }
 
+    // Check file size (max 10MB)
+    if (formData.file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    // Check if file has content
+    if (formData.file.size === 0) {
+      alert('Cannot upload empty file');
+      return;
+    }
+
     setUploading(true);
     try {
       const uploadFormData = new FormData();
@@ -194,11 +207,18 @@ export default function DocumentsPage() {
         uploadFormData.append('expiryDate', formData.expiryDate);
       }
 
+      console.log('📤 Uploading file:', {
+        name: formData.file.name,
+        size: formData.file.size,
+        type: formData.file.type
+      });
+
       await documentAPI.uploadDocument(uploadFormData);
       closeUploadModal();
       loadDocuments();
       alert('Document uploaded successfully!');
     } catch (error: any) {
+      console.error('Upload error:', error);
       alert(error.response?.data?.message || 'Failed to upload document');
     } finally {
       setUploading(false);
@@ -284,6 +304,7 @@ export default function DocumentsPage() {
 
   const closeUploadModal = () => {
     setShowUploadModal(false);
+    setFileInputKey(Date.now()); // Reset file input
     setFormData({ 
       title: '', 
       description: '', 
@@ -691,9 +712,15 @@ export default function DocumentsPage() {
                 <div>
                   <label className="text-sm font-semibold text-gray-700 mb-2 block">Select File *</label>
                   <Input
+                    key={fileInputKey}
                     type="file"
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
+                      console.log('📁 File selected:', {
+                        name: file?.name,
+                        size: file?.size,
+                        type: file?.type
+                      });
                       setFormData({ 
                         ...formData, 
                         file,
@@ -708,6 +735,12 @@ export default function DocumentsPage() {
                     <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
                       <FileCheck className="h-4 w-4" />
                       Selected: {formData.file.name} ({formatFileSize(formData.file.size)})
+                    </p>
+                  )}
+                  {formData.file && formData.file.size === 0 && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      Warning: This file appears to be empty (0 bytes)
                     </p>
                   )}
                   {!formData.file && (

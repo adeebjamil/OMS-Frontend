@@ -182,7 +182,7 @@ export default function AdminDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 truncate">{task.title}</p>
                       <p className="text-sm text-muted-foreground truncate">
-                        {typeof task.assignedTo === 'object' ? task.assignedTo.name : 'Unassigned'}
+                        {typeof task.assignedTo === 'object' && task.assignedTo ? task.assignedTo.name : 'Unassigned'}
                       </p>
                     </div>
                     <Badge className={

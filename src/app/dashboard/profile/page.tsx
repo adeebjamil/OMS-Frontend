@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -628,10 +629,12 @@ export default function ProfilePage() {
                     <Key className="h-4 w-4 mr-2" />
                     Change Password
                   </Button>
-                  <Button variant="outline" className="w-full" disabled>
-                    <Mail className="h-4 w-4 mr-2" />
-                    Forgot Password (Coming Soon)
-                  </Button>
+                  <Link href="/forgot-password" className="block">
+                    <Button variant="outline" className="w-full">
+                      <Mail className="h-4 w-4 mr-2" />
+                      Forgot Password
+                    </Button>
+                  </Link>
                 </div>
               </div>
             )}
