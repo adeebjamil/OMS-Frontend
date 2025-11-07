@@ -307,11 +307,9 @@ export default function DocumentsPage() {
   const handleViewDocument = async (doc: Document) => {
     try {
       // Open document through backend API which handles Cloudinary authentication
-      const token = localStorage.getItem('token');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const viewUrl = `${apiUrl}/api/documents/${doc._id}/file`;
+      const viewUrl = documentAPI.getDownloadUrl(doc._id);
       
-      // Open in new tab with token for authentication
+      // Open in new tab - auth handled by axios interceptor
       window.open(viewUrl, '_blank');
     } catch (error) {
       console.error('Failed to view document:', error);
