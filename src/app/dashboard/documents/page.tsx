@@ -120,10 +120,15 @@ export default function DocumentsPage() {
 
   const loadUsers = async () => {
     try {
-      const res = await userAPI.getUsers();
+      console.log('👥 Loading users for share dropdown...');
+      // Only load interns for sharing documents
+      const res = await userAPI.getUsers({ role: 'intern', status: 'active' });
+      console.log('✅ Users loaded:', res.data.data);
+      console.log('   Total users:', res.data.count);
       setUsers(res.data.data || []);
-    } catch (error) {
-      console.error('Failed to load users:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to load users:', error);
+      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -306,14 +311,34 @@ export default function DocumentsPage() {
 
   const handleViewDocument = async (doc: Document) => {
     try {
-      // Open document through backend API which handles Cloudinary authentication
+      console.log('👁️ Opening document for view:', doc.title);
+      
+      // Fetch the document through API with authentication
+      const token = localStorage.getItem('token');
       const viewUrl = documentAPI.getDownloadUrl(doc._id);
       
-      // Open in new tab - auth handled by axios interceptor
-      window.open(viewUrl, '_blank');
-    } catch (error) {
-      console.error('Failed to view document:', error);
-      alert('Failed to view document. Please try again.');
+      const response = await fetch(viewUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch document: ${response.statusText}`);
+      }
+
+      // Create blob URL and open in new tab
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      
+      // Clean up blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+      
+      console.log('✅ Document opened successfully');
+    } catch (error: any) {
+      console.error('❌ Failed to view document:', error);
+      alert(error.message || 'Failed to view document. Please try again.');
     }
   };
 
