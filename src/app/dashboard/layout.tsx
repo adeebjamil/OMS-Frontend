@@ -51,6 +51,7 @@ export default function DashboardLayout({
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
@@ -64,8 +65,18 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed top-0 left-0 z-40 w-72 h-screen bg-white/80 backdrop-blur-xl border-r border-gray-200/50 shadow-xl">
+      <aside className={`fixed top-0 left-0 z-40 w-72 h-screen bg-white/80 backdrop-blur-xl border-r border-gray-200/50 shadow-xl transition-transform duration-300 lg:translate-x-0 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
         <div className="h-full flex flex-col">
           {/* Logo Section */}
           <div className="p-6 border-b border-gray-200/50">
@@ -159,17 +170,27 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="pl-72">
+      <div className="lg:pl-72">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
-          <div className="px-8 py-5">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 lg:py-5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+
                 <div>
-                  <h1 className="text-2xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                  <h1 className="text-xl sm:text-2xl font-bold bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                     {navItems.find(item => item.href === pathname)?.label || 'Dashboard'}
                   </h1>
-                  <p className="text-sm text-gray-500 mt-0.5">
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 hidden sm:block">
                     {new Date().toLocaleDateString('en-US', { 
                       weekday: 'long', 
                       year: 'numeric', 
@@ -180,16 +201,18 @@ export default function DashboardLayout({
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
-                {/* Search */}
-                <GlobalSearch />
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Search - Hidden on mobile */}
+                <div className="hidden md:block">
+                  <GlobalSearch />
+                </div>
 
                 {/* Notifications */}
                 <NotificationDropdown />
 
                 {/* Profile Avatar */}
                 <Link href="/dashboard/profile">
-                  <Button variant="outline" className="rounded-full h-10 px-3 border-gray-300 hover:bg-gray-100 gap-2">
+                  <Button variant="outline" className="rounded-full h-10 px-2 sm:px-3 border-gray-300 hover:bg-gray-100 gap-2">
                     {user?.avatar ? (
                       <img
                         src={user.avatar}
@@ -201,7 +224,7 @@ export default function DashboardLayout({
                         <UserCircle className="h-4 w-4 text-white" />
                       </div>
                     )}
-                    <span className="text-sm font-medium text-gray-700">{user?.name?.split(' ')[0]}</span>
+                    <span className="text-sm font-medium text-gray-700 hidden sm:inline">{user?.name?.split(' ')[0]}</span>
                   </Button>
                 </Link>
               </div>
@@ -210,21 +233,21 @@ export default function DashboardLayout({
         </header>
 
         {/* Page Content */}
-        <main className="p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-[1600px] mx-auto">
             {children}
           </div>
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-gray-200/50 bg-white/60 backdrop-blur-sm px-8 py-6 mt-12">
+        <footer className="border-t border-gray-200/50 bg-white/60 backdrop-blur-sm px-4 sm:px-6 lg:px-8 py-4 sm:py-6 mt-8 sm:mt-12">
           <div className="max-w-[1600px] mx-auto">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <p>© 2025 OfficePro. All rights reserved.</p>
-              <div className="flex items-center gap-6">
-                <Link href="/support" className="hover:text-blue-600 transition-colors">Support</Link>
-                <Link href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</Link>
-                <Link href="/terms" className="hover:text-blue-600 transition-colors">Terms</Link>
+            <div className="flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-3">
+              <p className="text-xs sm:text-sm">© 2025 OfficePro. All rights reserved.</p>
+              <div className="flex items-center gap-4 sm:gap-6">
+                <Link href="/support" className="hover:text-blue-600 transition-colors text-xs sm:text-sm">Support</Link>
+                <Link href="/privacy" className="hover:text-blue-600 transition-colors text-xs sm:text-sm">Privacy</Link>
+                <Link href="/terms" className="hover:text-blue-600 transition-colors text-xs sm:text-sm">Terms</Link>
               </div>
             </div>
           </div>

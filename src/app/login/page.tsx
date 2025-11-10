@@ -34,30 +34,30 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 p-4 border-8 border-[#3B7A9E]">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8 border-4 sm:border-8 border-[#3B7A9E]">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mb-6 sm:mb-8">
           <Image 
             src="/logo.png" 
             alt="Lovosis Technology" 
             width={300} 
             height={80}
-            className="h-20 w-auto"
+            className="h-16 sm:h-20 w-auto"
             priority
           />
         </div>
 
         {/* Login Card with Logo Color Border */}
         <Card className="border-4 border-[#3B7A9E] shadow-2xl bg-white">
-          <CardHeader className="space-y-1 pb-6 text-center">
-            <CardTitle className="text-3xl font-bold text-gray-900">Welcome Back</CardTitle>
-            <CardDescription className="text-base text-gray-600">
+          <CardHeader className="space-y-1 pb-4 sm:pb-6 text-center">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome Back</CardTitle>
+            <CardDescription className="text-sm sm:text-base text-gray-600">
               Sign in to your account to continue
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 text-sm p-4 rounded-lg flex items-start gap-2">
                   <svg className="h-5 w-5 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
