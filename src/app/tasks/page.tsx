@@ -73,18 +73,18 @@ export default function TasksPage() {
 
   const loadUsers = async () => {
     try {
-      // Try to get employees, fallback to all users if needed
+      // Try to get interns, fallback to all users if needed
       try {
-        const response = await userAPI.getEmployees();
+        const response = await userAPI.getInterns();
         if (response.data.success) {
           setUsers(response.data.data);
         }
-      } catch (employeeError) {
-        // Fallback: get all users and filter employees
+      } catch (internError) {
+        // Fallback: get all users and filter interns
         const response = await userAPI.getUsers();
         if (response.data.success) {
-          const employees = response.data.data.filter((u: any) => u.role === 'employee');
-          setUsers(employees);
+          const interns = response.data.data.filter((u: any) => u.role === 'intern');
+          setUsers(interns);
         }
       }
     } catch (error) {
@@ -536,7 +536,7 @@ export default function TasksPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {user?.role === 'employee' && task.status !== 'completed' && (
+                      {user?.role === 'intern' && task.status !== 'completed' && (
                         <select
                           className="h-9 rounded-md border border-input bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           value={task.status}
