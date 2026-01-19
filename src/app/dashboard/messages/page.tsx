@@ -32,8 +32,8 @@ import {
 
 interface Message {
   _id: string;
-  sender: { _id: string; name: string; email: string };
-  recipient: { _id: string; name: string; email: string };
+  sender: { _id: string; id?: string; name: string; email: string; internId?: string; employeeId?: string };
+  recipient: { _id: string; id?: string; name: string; email: string; internId?: string; employeeId?: string };
   subject: string;
   message: string;
   isRead: boolean;
@@ -61,9 +61,12 @@ interface Announcement {
 
 interface UserOption {
   _id: string;
+  id?: string;
   name: string;
   email: string;
   role: string;
+  internId?: string;
+  employeeId?: string;
 }
 
 export default function MessagesPage() {
@@ -83,6 +86,7 @@ export default function MessagesPage() {
   const [filterRead, setFilterRead] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all'); // Admin employee filter
   const [sortBy, setSortBy] = useState('newest');
   const [messageFormData, setMessageFormData] = useState({
     recipientId: '',
@@ -103,7 +107,7 @@ export default function MessagesPage() {
   useEffect(() => {
     loadData();
     loadUsers();
-  }, []);
+  }, [filterEmployee]);
 
   useEffect(() => {
     filterMessages();
@@ -115,8 +119,14 @@ export default function MessagesPage() {
 
   const loadData = async () => {
     try {
+      const params: any = {};
+      // Admin can filter by employee
+      if (currentUser?.role === 'admin' && filterEmployee !== 'all') {
+        params.employeeId = filterEmployee;
+      }
+      
       const [messagesRes, announcementsRes] = await Promise.all([
-        messageAPI.getMessages(),
+        messageAPI.getMessages(params),
         announcementAPI.getAnnouncements(),
       ]);
       setMessages(messagesRes.data.data || []);
@@ -538,6 +548,21 @@ export default function MessagesPage() {
                   <option value="normal">Normal</option>
                   <option value="low">Low</option>
                 </select>
+                {/* Admin: Filter by Employee */}
+                {currentUser?.role === 'admin' && (
+                  <select
+                    className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[180px]"
+                    value={filterEmployee}
+                    onChange={(e) => setFilterEmployee(e.target.value)}
+                  >
+                    <option value="all">All Employees</option>
+                    {users.filter(u => u.role === 'intern').map((emp) => (
+                      <option key={emp._id || emp.id} value={emp._id || emp.id}>
+                        {emp.internId || emp.employeeId || ''} - {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <select
                   className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={sortBy}

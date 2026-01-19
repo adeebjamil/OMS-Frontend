@@ -67,6 +67,8 @@ interface UserOption {
   name: string;
   email: string;
   role: string;
+  internId?: string;
+  employeeId?: string;
 }
 
 export default function DocumentsPage() {
@@ -82,6 +84,7 @@ export default function DocumentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterAccess, setFilterAccess] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all'); // Admin employee filter
   const [sortBy, setSortBy] = useState('newest');
   const [uploading, setUploading] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(Date.now());
@@ -103,7 +106,7 @@ export default function DocumentsPage() {
   useEffect(() => {
     loadDocuments();
     loadUsers();
-  }, []);
+  }, [filterEmployee]);
 
   useEffect(() => {
     filterDocuments();
@@ -111,7 +114,12 @@ export default function DocumentsPage() {
 
   const loadDocuments = async () => {
     try {
-      const res = await documentAPI.getDocuments();
+      const params: Record<string, string> = {};
+      // Admin can filter by employee who uploaded the document
+      if (currentUser?.role === 'admin' && filterEmployee !== 'all') {
+        params.uploadedBy = filterEmployee;
+      }
+      const res = await documentAPI.getDocuments(params);
       setDocuments(res.data.data || []);
     } catch (error) {
       console.error('Failed to load documents:', error);
@@ -632,6 +640,21 @@ export default function DocumentsPage() {
               <option value="myuploads">My Uploads</option>
               <option value="shared">Shared with Me</option>
             </select>
+            {/* Admin-only employee filter */}
+            {currentUser?.role === 'admin' && (
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {users.filter(u => u.role === 'intern').map((emp) => (
+                  <option key={emp._id || emp.id} value={emp._id || emp.id}>
+                    {emp.internId || emp.employeeId || ''} - {emp.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={sortBy}
