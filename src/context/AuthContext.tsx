@@ -23,12 +23,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is logged in
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      
+      if (storedToken && storedUser && storedUser !== 'undefined') {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } else {
+        // Clear invalid data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    } catch (error) {
+      // Clear corrupted data
+      console.error('Error parsing stored user data:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     }
     setLoading(false);
   }, []);
@@ -36,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login(email, password);
-      const { token, user } = response.data;
+      const { token, data: user } = response.data;
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -51,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async (data: any) => {
     try {
       const response = await authAPI.register(data);
-      const { token, user } = response.data;
+      const { token, data: user } = response.data;
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));

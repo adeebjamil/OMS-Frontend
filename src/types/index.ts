@@ -1,5 +1,6 @@
 export interface User {
   _id: string;
+  id?: string; // Alternative ID field from Supabase
   name: string;
   email: string;
   role: 'admin' | 'intern';

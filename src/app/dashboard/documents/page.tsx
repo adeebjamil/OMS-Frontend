@@ -40,6 +40,7 @@ import {
 
 interface Document {
   _id: string;
+  id?: string;
   title: string;
   description?: string;
   category: 'training' | 'policy' | 'project' | 'form' | 'certificate' | 'other';
@@ -47,9 +48,9 @@ interface Document {
   fileName: string;
   fileSize: number;
   fileType: string;
-  uploadedBy: { _id: string; name: string; email: string };
+  uploadedBy: { _id: string; id?: string; name: string; email: string };
   sharedWith: Array<{
-    userId: { _id: string; name: string };
+    userId: { _id: string; id?: string; name: string };
     accessLevel: 'view' | 'download' | 'edit';
   }>;
   isPublic: boolean;
@@ -62,6 +63,7 @@ interface Document {
 
 interface UserOption {
   _id: string;
+  id?: string;
   name: string;
   email: string;
   role: string;
@@ -89,14 +91,14 @@ export default function DocumentsPage() {
     category: 'other' as 'training' | 'policy' | 'project' | 'form' | 'certificate' | 'other',
     isPublic: false,
     tags: '',
-    expiryDate: '',
     file: null as File | null,
     selectedUsers: [] as string[], // Add selected users array
   });
   const [shareData, setShareData] = useState({
-    userId: '',
+    selectedUsers: [] as string[],
     accessLevel: 'view' as 'view' | 'download' | 'edit',
   });
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     loadDocuments();
@@ -121,8 +123,8 @@ export default function DocumentsPage() {
   const loadUsers = async () => {
     try {
       console.log('👥 Loading users for share dropdown...');
-      // Only load employees for sharing documents
-      const res = await userAPI.getUsers({ role: 'intern', status: 'active' });
+      // Load all users for sharing documents (both interns and admins)
+      const res = await userAPI.getUsers({ status: 'active' });
       console.log('✅ Users loaded:', res.data.data);
       console.log('   Total users:', res.data.count);
       setUsers(res.data.data || []);
@@ -152,11 +154,19 @@ export default function DocumentsPage() {
     } else if (filterAccess === 'private') {
       filtered = filtered.filter(doc => !doc.isPublic);
     } else if (filterAccess === 'myuploads') {
-      filtered = filtered.filter(doc => doc.uploadedBy?._id === currentUser?._id);
+      filtered = filtered.filter(doc => {
+        const uploaderId = doc.uploadedBy?._id || doc.uploadedBy?.id;
+        const currentUserId = currentUser?._id || currentUser?.id;
+        return uploaderId === currentUserId;
+      });
     } else if (filterAccess === 'shared') {
-      filtered = filtered.filter(doc => 
-        doc.sharedWith?.some((share: any) => share.userId?._id === currentUser?._id)
-      );
+      filtered = filtered.filter(doc => {
+        const currentUserId = currentUser?._id || currentUser?.id;
+        return doc.sharedWith?.some((share: any) => {
+          const shareUserId = share.userId?._id || share.userId?.id || share.userId;
+          return shareUserId === currentUserId;
+        });
+      });
     }
 
     // Sort
@@ -209,9 +219,6 @@ export default function DocumentsPage() {
       uploadFormData.append('category', formData.category);
       uploadFormData.append('isPublic', formData.isPublic.toString());
       uploadFormData.append('tags', formData.tags);
-      if (formData.expiryDate) {
-        uploadFormData.append('expiryDate', formData.expiryDate);
-      }
       
       // Add selected users if not public
       if (!formData.isPublic && formData.selectedUsers.length > 0) {
@@ -253,22 +260,35 @@ export default function DocumentsPage() {
 
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDoc) return;
+    if (!selectedDoc || shareData.selectedUsers.length === 0) {
+      alert('Please select at least one user to share with');
+      return;
+    }
 
+    setSharing(true);
     try {
       console.log('📤 Sharing document:', {
         documentId: selectedDoc._id,
-        userId: shareData.userId,
+        selectedUsers: shareData.selectedUsers,
         accessLevel: shareData.accessLevel,
         currentSharedWith: selectedDoc.sharedWith
       });
       
+      // Create new shares from selected users
+      const newShares = shareData.selectedUsers.map(userId => ({
+        userId: userId,
+        accessLevel: shareData.accessLevel,
+      }));
+
+      // Merge with existing shares (avoid duplicates)
+      const existingUserIds = (selectedDoc.sharedWith || []).map((s: any) => 
+        typeof s.userId === 'object' ? s.userId._id : s.userId
+      );
+      const filteredNewShares = newShares.filter(s => !existingUserIds.includes(s.userId));
+      
       const updatedSharedWith = [
         ...(selectedDoc.sharedWith || []),
-        {
-          userId: shareData.userId,
-          accessLevel: shareData.accessLevel,
-        }
+        ...filteredNewShares
       ];
 
       const response = await documentAPI.updateDocument(selectedDoc._id, {
@@ -277,12 +297,14 @@ export default function DocumentsPage() {
 
       console.log('✅ Document shared successfully:', response.data);
       setShowShareModal(false);
-      setShareData({ userId: '', accessLevel: 'view' });
+      setShareData({ selectedUsers: [], accessLevel: 'view' });
       loadDocuments();
-      alert('Document shared successfully!');
+      alert(`Document shared with ${filteredNewShares.length} user(s) successfully!`);
     } catch (error: any) {
       console.error('❌ Failed to share document:', error);
       alert(error.response?.data?.message || 'Failed to share document');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -382,7 +404,6 @@ export default function DocumentsPage() {
       category: 'other',
       isPublic: false,
       tags: '',
-      expiryDate: '',
       file: null,
       selectedUsers: [],
     });
@@ -452,7 +473,11 @@ export default function DocumentsPage() {
 
   const stats = {
     total: documents.length,
-    myUploads: documents.filter(doc => doc.uploadedBy?._id === currentUser?._id).length,
+    myUploads: documents.filter(doc => {
+      const uploaderId = doc.uploadedBy?._id || doc.uploadedBy?.id;
+      const currentUserId = currentUser?._id || currentUser?.id;
+      return uploaderId === currentUserId;
+    }).length,
     public: documents.filter(doc => doc.isPublic).length,
     private: documents.filter(doc => !doc.isPublic).length,
     totalDownloads: documents.reduce((sum, doc) => sum + (doc.downloads || 0), 0),
@@ -487,12 +512,10 @@ export default function DocumentsPage() {
               Export CSV
             </Button>
           )}
-          {currentUser?.role === 'admin' && (
-            <Button onClick={() => setShowUploadModal(true)} className="gap-2">
-              <Upload className="h-5 w-5" />
-              Upload Document
-            </Button>
-          )}
+          <Button onClick={() => setShowUploadModal(true)} className="gap-2">
+            <Upload className="h-5 w-5" />
+            Upload Document
+          </Button>
         </div>
       </div>
 
@@ -716,7 +739,7 @@ export default function DocumentsPage() {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {(currentUser?.role === 'admin' || doc.uploadedBy?._id === currentUser?._id) && (
+                    {(currentUser?.role === 'admin' || (doc.uploadedBy?._id || doc.uploadedBy?.id) === (currentUser?._id || currentUser?.id)) && (
                       <>
                         <Button
                           size="sm"
@@ -852,15 +875,6 @@ export default function DocumentsPage() {
                       <option value="other">Other</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Expiry Date</label>
-                    <Input
-                      type="date"
-                      value={formData.expiryDate}
-                      onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-                      disabled={uploading}
-                    />
-                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-gray-700 mb-2 block">Description</label>
@@ -900,49 +914,151 @@ export default function DocumentsPage() {
                     />
                     <label htmlFor="isPublic" className="text-sm font-semibold text-blue-900 cursor-pointer">
                       <Unlock className="h-4 w-4 inline mr-1" />
-                      Make this document public (accessible to all employees)
+                      Make this document public (accessible to all users)
                     </label>
                   </div>
                   
-                  {!formData.isPublic && currentUser?.role === 'admin' && (
+                  {!formData.isPublic && (
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <label className="text-sm font-semibold text-gray-700 mb-2 block">
                         <Users className="h-4 w-4 inline mr-1" />
-                        Share with specific employees (optional)
+                        Share with specific users (optional)
                       </label>
-                      <p className="text-xs text-gray-500 mb-2">Select employees who can access this document</p>
-                      <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 rounded p-2 bg-white">
-                        {users.filter(u => u.role === 'intern').map(user => (
-                          <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={formData.selectedUsers.includes(user._id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFormData({
-                                    ...formData,
-                                    selectedUsers: [...formData.selectedUsers, user._id]
-                                  });
-                                } else {
-                                  setFormData({
-                                    ...formData,
-                                    selectedUsers: formData.selectedUsers.filter(id => id !== user._id)
-                                  });
-                                }
+                      <p className="text-xs text-gray-500 mb-2">
+                        {currentUser?.role === 'admin' 
+                          ? 'Select employees who can access this document'
+                          : 'Select admins or other employees to share with'}
+                      </p>
+                      
+                      {/* Quick Select Buttons */}
+                      <div className="flex gap-2 mb-3">
+                        {currentUser?.role === 'admin' && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const allEmployeeIds = users.filter(u => u.role === 'intern').map(u => u._id);
+                              setFormData({ ...formData, selectedUsers: allEmployeeIds });
+                            }}
+                            disabled={uploading}
+                          >
+                            Select All Employees
+                          </Button>
+                        )}
+                        {currentUser?.role === 'intern' && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const allAdminIds = users.filter(u => u.role === 'admin').map(u => u._id);
+                                setFormData({ ...formData, selectedUsers: allAdminIds });
                               }}
                               disabled={uploading}
-                              className="w-4 h-4"
-                            />
-                            <span className="text-sm">{user.name} ({user.email})</span>
-                          </label>
-                        ))}
-                        {users.filter(u => u.role === 'intern').length === 0 && (
-                          <p className="text-xs text-gray-400 p-2">No employees available</p>
+                            >
+                              All Admins
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const allEmployeeIds = users.filter(u => u.role === 'intern' && u._id !== currentUser?._id).map(u => u._id);
+                                setFormData({ ...formData, selectedUsers: allEmployeeIds });
+                              }}
+                              disabled={uploading}
+                            >
+                              All Employees
+                            </Button>
+                          </>
+                        )}
+                        {formData.selectedUsers.length > 0 && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setFormData({ ...formData, selectedUsers: [] })}
+                            disabled={uploading}
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="max-h-48 overflow-y-auto space-y-1 border border-gray-200 rounded p-2 bg-white">
+                        {/* Admins Section (for employees) */}
+                        {currentUser?.role === 'intern' && users.filter(u => u.role === 'admin').length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs font-semibold text-gray-500 uppercase px-2 py-1 bg-blue-50 rounded">Admins</p>
+                            {users.filter(u => u.role === 'admin').map(user => (
+                              <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.selectedUsers.includes(user._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData({
+                                        ...formData,
+                                        selectedUsers: [...formData.selectedUsers, user._id]
+                                      });
+                                    } else {
+                                      setFormData({
+                                        ...formData,
+                                        selectedUsers: formData.selectedUsers.filter(id => id !== user._id)
+                                      });
+                                    }
+                                  }}
+                                  disabled={uploading}
+                                  className="w-4 h-4"
+                                />
+                                <span className="text-sm">{user.name}</span>
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">Admin</Badge>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Employees Section */}
+                        <div>
+                          {currentUser?.role === 'intern' && (
+                            <p className="text-xs font-semibold text-gray-500 uppercase px-2 py-1 bg-green-50 rounded">Employees</p>
+                          )}
+                          {users.filter(u => u.role === 'intern' && u._id !== currentUser?._id).map(user => (
+                            <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={formData.selectedUsers.includes(user._id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      selectedUsers: [...formData.selectedUsers, user._id]
+                                    });
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      selectedUsers: formData.selectedUsers.filter(id => id !== user._id)
+                                    });
+                                  }
+                                }}
+                                disabled={uploading}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">{user.name}</span>
+                              {currentUser?.role === 'admin' && <span className="text-xs text-gray-400">({user.email})</span>}
+                            </label>
+                          ))}
+                        </div>
+                        
+                        {users.filter(u => u._id !== currentUser?._id).length === 0 && (
+                          <p className="text-xs text-gray-400 p-2">No users available to share with</p>
                         )}
                       </div>
                       {formData.selectedUsers.length > 0 && (
                         <p className="text-xs text-green-600 mt-2">
-                          {formData.selectedUsers.length} employee(s) selected
+                          ✓ {formData.selectedUsers.length} user(s) selected
                         </p>
                       )}
                     </div>
@@ -972,31 +1088,33 @@ export default function DocumentsPage() {
       {/* Share Modal */}
       {showShareModal && selectedDoc && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-2xl border-0 shadow-2xl bg-white">
-            <CardHeader className="border-b bg-white">
+          <Card className="w-full max-w-2xl border-0 shadow-2xl bg-white max-h-[90vh] flex flex-col">
+            <CardHeader className="border-b bg-white shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-2xl">Share Document</CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setShowShareModal(false)}>
+                <Button variant="outline" size="sm" onClick={() => {
+                  setShowShareModal(false);
+                  setShareData({ selectedUsers: [], accessLevel: 'view' });
+                }}>
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 bg-white">
+            <CardContent className="pt-6 bg-white overflow-y-auto">
               <div className="mb-4">
                 <h3 className="font-semibold text-lg">{selectedDoc.title}</h3>
-                <p className="text-sm text-muted-foreground">Choose who can access this document</p>
+                <p className="text-sm text-muted-foreground">Select users to share this document with</p>
               </div>
 
               {/* Current Shares */}
               {selectedDoc.sharedWith && selectedDoc.sharedWith.length > 0 && (
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-semibold mb-2">Currently shared with:</p>
-                  <div className="space-y-2">
+                  <p className="text-sm font-semibold mb-2">Currently shared with ({selectedDoc.sharedWith.length}):</p>
+                  <div className="flex flex-wrap gap-2">
                     {selectedDoc.sharedWith.map((share: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <span>{share.userId?.name || 'Unknown'}</span>
-                        <Badge variant="outline">{share.accessLevel}</Badge>
-                      </div>
+                      <Badge key={i} variant="outline" className="text-xs">
+                        {share.userId?.name || 'Unknown'} • {share.accessLevel}
+                      </Badge>
                     ))}
                   </div>
                 </div>
@@ -1004,45 +1122,197 @@ export default function DocumentsPage() {
 
               <form onSubmit={handleShare} className="space-y-4">
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 mb-2 block">Select User *</label>
-                  <select
-                    required
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={shareData.userId}
-                    onChange={(e) => setShareData({ ...shareData, userId: e.target.value })}
-                  >
-                    <option value="">Choose a user</option>
-                    {users.filter(u => 
-                      u._id !== currentUser?._id && 
-                      !selectedDoc.sharedWith?.some((s: any) => s.userId?._id === u._id)
-                    ).map(u => (
-                      <option key={u._id} value={u._id}>{u.name} ({u.role})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label className="text-sm font-semibold text-gray-700 mb-2 block">Access Level *</label>
                   <select
                     required
                     className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={shareData.accessLevel}
                     onChange={(e) => setShareData({ ...shareData, accessLevel: e.target.value as any })}
+                    disabled={sharing}
                   >
                     <option value="view">View Only</option>
                     <option value="download">View & Download</option>
                     <option value="edit">View, Download & Edit</option>
                   </select>
                 </div>
+
+                <div>
+                  <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                    <Users className="h-4 w-4 inline mr-1" />
+                    Select Users to Share With *
+                  </label>
+                  
+                  {/* Quick Select Buttons */}
+                  <div className="flex gap-2 mb-3 flex-wrap">
+                    {currentUser?.role === 'admin' && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const availableEmployees = users.filter(u => 
+                            u.role === 'intern' && 
+                            !selectedDoc.sharedWith?.some((s: any) => 
+                              (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id
+                            )
+                          );
+                          setShareData({ ...shareData, selectedUsers: availableEmployees.map(u => u._id) });
+                        }}
+                        disabled={sharing}
+                      >
+                        Select All Employees
+                      </Button>
+                    )}
+                    {currentUser?.role === 'intern' && (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const availableAdmins = users.filter(u => 
+                              u.role === 'admin' && 
+                              !selectedDoc.sharedWith?.some((s: any) => 
+                                (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id
+                              )
+                            );
+                            setShareData({ ...shareData, selectedUsers: availableAdmins.map(u => u._id) });
+                          }}
+                          disabled={sharing}
+                        >
+                          All Admins
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const availableEmployees = users.filter(u => 
+                              u.role === 'intern' && 
+                              u._id !== currentUser?._id &&
+                              !selectedDoc.sharedWith?.some((s: any) => 
+                                (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id
+                              )
+                            );
+                            setShareData({ ...shareData, selectedUsers: availableEmployees.map(u => u._id) });
+                          }}
+                          disabled={sharing}
+                        >
+                          All Employees
+                        </Button>
+                      </>
+                    )}
+                    {shareData.selectedUsers.length > 0 && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShareData({ ...shareData, selectedUsers: [] })}
+                        disabled={sharing}
+                      >
+                        Clear All
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto space-y-1 border border-gray-200 rounded p-2 bg-white">
+                    {/* Admins Section (for employees) */}
+                    {currentUser?.role === 'intern' && users.filter(u => 
+                      u.role === 'admin' && 
+                      !selectedDoc.sharedWith?.some((s: any) => (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id)
+                    ).length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase px-2 py-1 bg-blue-50 rounded">Admins</p>
+                        {users.filter(u => 
+                          u.role === 'admin' && 
+                          !selectedDoc.sharedWith?.some((s: any) => (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id)
+                        ).map(user => (
+                          <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={shareData.selectedUsers.includes(user._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setShareData({ ...shareData, selectedUsers: [...shareData.selectedUsers, user._id] });
+                                } else {
+                                  setShareData({ ...shareData, selectedUsers: shareData.selectedUsers.filter(id => id !== user._id) });
+                                }
+                              }}
+                              disabled={sharing}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">{user.name}</span>
+                            <Badge className="bg-blue-100 text-blue-700 text-xs">Admin</Badge>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Employees Section */}
+                    {users.filter(u => 
+                      u.role === 'intern' && 
+                      u._id !== currentUser?._id &&
+                      !selectedDoc.sharedWith?.some((s: any) => (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id)
+                    ).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase px-2 py-1 bg-green-50 rounded">Employees</p>
+                        {users.filter(u => 
+                          u.role === 'intern' && 
+                          u._id !== currentUser?._id &&
+                          !selectedDoc.sharedWith?.some((s: any) => (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id)
+                        ).map(user => (
+                          <label key={user._id} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={shareData.selectedUsers.includes(user._id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setShareData({ ...shareData, selectedUsers: [...shareData.selectedUsers, user._id] });
+                                } else {
+                                  setShareData({ ...shareData, selectedUsers: shareData.selectedUsers.filter(id => id !== user._id) });
+                                }
+                              }}
+                              disabled={sharing}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">{user.name}</span>
+                            <Badge className="bg-green-100 text-green-700 text-xs">Employee</Badge>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {users.filter(u => 
+                      u._id !== currentUser?._id &&
+                      !selectedDoc.sharedWith?.some((s: any) => (typeof s.userId === 'object' ? s.userId._id : s.userId) === u._id)
+                    ).length === 0 && (
+                      <p className="text-xs text-gray-400 p-4 text-center">
+                        All users have already been shared with this document
+                      </p>
+                    )}
+                  </div>
+                  
+                  {shareData.selectedUsers.length > 0 && (
+                    <p className="text-xs text-green-600 mt-2">
+                      ✓ {shareData.selectedUsers.length} user(s) selected
+                    </p>
+                  )}
+                </div>
+                
                 <div className="flex items-center gap-3 pt-4">
-                  <Button type="submit" className="flex-1">
+                  <Button type="submit" className="flex-1" disabled={sharing || shareData.selectedUsers.length === 0}>
                     <Share2 className="h-4 w-4 mr-2" />
-                    Share Document
+                    {sharing ? 'Sharing...' : `Share with ${shareData.selectedUsers.length} User(s)`}
                   </Button>
                   <Button 
                     type="button" 
                     variant="outline" 
                     className="flex-1" 
-                    onClick={() => setShowShareModal(false)}
+                    onClick={() => {
+                      setShowShareModal(false);
+                      setShareData({ selectedUsers: [], accessLevel: 'view' });
+                    }}
+                    disabled={sharing}
                   >
                     Cancel
                   </Button>
