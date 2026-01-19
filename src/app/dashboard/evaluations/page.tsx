@@ -84,6 +84,7 @@ export default function EvaluationsPage() {
   const [filterRating, setFilterRating] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [formData, setFormData] = useState({
     internId: '',
@@ -122,7 +123,7 @@ export default function EvaluationsPage() {
 
   useEffect(() => {
     filterEvaluations();
-  }, [evaluations, searchTerm, filterRating, filterType, filterStatus, sortBy]);
+  }, [evaluations, searchTerm, filterRating, filterType, filterStatus, filterEmployee, sortBy]);
 
   const loadEvaluations = async () => {
     try {
@@ -147,6 +148,11 @@ export default function EvaluationsPage() {
 
   const filterEvaluations = () => {
     let filtered = [...evaluations];
+
+    // Employee filter (Admin only)
+    if (filterEmployee !== 'all') {
+      filtered = filtered.filter(ev => ev.internId?._id === filterEmployee);
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(ev =>
@@ -443,6 +449,18 @@ export default function EvaluationsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {currentUser?.role === 'admin' && (
+              <select
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {users.map((u) => (
+                  <option key={u._id} value={u._id}>{u.name}</option>
+                ))}
+              </select>
+            )}
             <select
               className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={filterRating}

@@ -32,6 +32,7 @@ export default function TasksPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('dueDate');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -50,7 +51,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     filterTasks();
-  }, [tasks, searchTerm, statusFilter, priorityFilter, sortBy]);
+  }, [tasks, searchTerm, statusFilter, priorityFilter, employeeFilter, sortBy]);
 
   const loadTasks = async () => {
     try {
@@ -96,6 +97,11 @@ export default function TasksPage() {
 
   const filterTasks = () => {
     let filtered = [...tasks];
+
+    // Employee filter (Admin only)
+    if (employeeFilter !== 'all') {
+      filtered = filtered.filter(task => task.assignedTo?._id === employeeFilter);
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(task =>
@@ -276,6 +282,7 @@ export default function TasksPage() {
     setSearchTerm('');
     setStatusFilter('all');
     setPriorityFilter('all');
+    setEmployeeFilter('all');
     setSortBy('dueDate');
   };
 
@@ -419,7 +426,7 @@ export default function TasksPage() {
       {/* Filters */}
       <Card className="border-0 shadow-lg">
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-5 mb-4">
+          <div className="grid gap-4 md:grid-cols-6 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -429,6 +436,18 @@ export default function TasksPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {user?.role === 'admin' && (
+              <select
+                className="h-10 rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={employeeFilter}
+                onChange={(e) => setEmployeeFilter(e.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {users.map((u) => (
+                  <option key={u._id} value={u._id}>{u.name}</option>
+                ))}
+              </select>
+            )}
             <select
               className="h-10 rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={statusFilter}

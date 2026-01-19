@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { workLogAPI } from '@/lib/api';
+import { workLogAPI, userAPI } from '@/lib/api';
 import { exportToCSV, formatDateForCSV } from '@/lib/csvUtils';
 import { 
   FileText, 
@@ -52,6 +52,7 @@ export default function WorkLogsPage() {
   const { user: currentUser } = useAuth();
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [filteredLogs, setFilteredLogs] = useState<WorkLog[]>([]);
+  const [employees, setEmployees] = useState<{ _id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -59,6 +60,7 @@ export default function WorkLogsPage() {
   const [feedbackLog, setFeedbackLog] = useState<WorkLog | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [sortBy, setSortBy] = useState('newest');
   const [formData, setFormData] = useState({
@@ -75,11 +77,14 @@ export default function WorkLogsPage() {
 
   useEffect(() => {
     loadWorkLogs();
-  }, []);
+    if (currentUser?.role === 'admin') {
+      loadEmployees();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     filterLogs();
-  }, [workLogs, searchTerm, filterRating, dateRange, sortBy]);
+  }, [workLogs, searchTerm, filterRating, filterEmployee, dateRange, sortBy]);
 
   const loadWorkLogs = async () => {
     try {
@@ -92,8 +97,26 @@ export default function WorkLogsPage() {
     }
   };
 
+  const loadEmployees = async () => {
+    try {
+      const res = await userAPI.getUsers();
+      const interns = (res.data.data || []).filter((u: any) => u.role === 'intern');
+      setEmployees(interns);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  };
+
   const filterLogs = () => {
     let filtered = [...workLogs];
+
+    // Employee filter (Admin only)
+    if (filterEmployee !== 'all') {
+      filtered = filtered.filter(log => {
+        const userObj = log.userId || log.user;
+        return userObj?._id === filterEmployee;
+      });
+    }
 
     if (searchTerm) {
       filtered = filtered.filter(log => {
@@ -241,6 +264,7 @@ export default function WorkLogsPage() {
   const clearFilters = () => {
     setSearchTerm('');
     setFilterRating('all');
+    setFilterEmployee('all');
     setDateRange({ start: '', end: '' });
     setSortBy('newest');
   };
@@ -390,7 +414,7 @@ export default function WorkLogsPage() {
       {/* Filters */}
       <Card className="border-0 shadow-lg">
         <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-5 mb-4">
+          <div className="grid gap-4 md:grid-cols-6 mb-4">
             <div className="relative md:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <Input
@@ -400,6 +424,18 @@ export default function WorkLogsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {currentUser?.role === 'admin' && (
+              <select
+                className="h-10 rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                value={filterEmployee}
+                onChange={(e) => setFilterEmployee(e.target.value)}
+              >
+                <option value="all">All Employees</option>
+                {employees.map((emp) => (
+                  <option key={emp._id} value={emp._id}>{emp.name}</option>
+                ))}
+              </select>
+            )}
             <select
               className="h-10 rounded-md border border-input bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               value={filterRating}

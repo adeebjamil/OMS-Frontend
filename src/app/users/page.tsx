@@ -211,7 +211,7 @@ export default function UsersPage() {
             >
               <option value="all">All Roles</option>
               <option value="admin">Admins</option>
-              <option value="employee">Employees</option>
+              <option value="intern">Employees</option>
             </select>
           </div>
         </CardContent>

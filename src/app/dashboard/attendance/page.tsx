@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { attendanceAPI } from '@/lib/api';
+import { attendanceAPI, userAPI } from '@/lib/api';
 import { 
   CheckCircle2, 
   Clock, 
@@ -23,7 +23,8 @@ import {
   CalendarX,
   Download,
   LogIn,
-  LogOut as LogOutIcon
+  LogOut as LogOutIcon,
+  Users
 } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -48,10 +49,12 @@ export default function AttendancePage() {
   const { user: currentUser } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<AttendanceRecord[]>([]);
+  const [employees, setEmployees] = useState<{ _id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -65,11 +68,14 @@ export default function AttendancePage() {
 
   useEffect(() => {
     loadAttendance();
-  }, []);
+    if (currentUser?.role === 'admin') {
+      loadEmployees();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     filterRecords();
-  }, [records, searchTerm, filterType]);
+  }, [records, searchTerm, filterType, filterEmployee]);
 
   const loadAttendance = async () => {
     try {
@@ -82,8 +88,26 @@ export default function AttendancePage() {
     }
   };
 
+  const loadEmployees = async () => {
+    try {
+      const res = await userAPI.getUsers();
+      const interns = (res.data.data || []).filter((u: any) => u.role === 'intern');
+      setEmployees(interns);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  };
+
   const filterRecords = () => {
     let filtered = [...records];
+
+    // Employee filter (Admin only)
+    if (filterEmployee !== 'all') {
+      filtered = filtered.filter(rec => {
+        const userObj = rec.user || rec.userId;
+        return userObj?._id === filterEmployee;
+      });
+    }
 
     // Search filter
     if (searchTerm) {
@@ -334,7 +358,7 @@ export default function AttendancePage() {
         <CardContent className="pt-6">
           <div className="space-y-4">
             {/* Row 1: Search and Quick Filters */}
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-5">
               <div className="relative md:col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
@@ -344,6 +368,18 @@ export default function AttendancePage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+              {currentUser?.role === 'admin' && (
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={filterEmployee}
+                  onChange={(e) => setFilterEmployee(e.target.value)}
+                >
+                  <option value="all">All Employees</option>
+                  {employees.map((emp) => (
+                    <option key={emp._id} value={emp._id}>{emp.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={filterType}
@@ -390,6 +426,7 @@ export default function AttendancePage() {
                   setSearchTerm('');
                   setFilterType('all');
                   setFilterStatus('all');
+                  setFilterEmployee('all');
                   setDateRange({ start: '', end: '' });
                 }}
                 className="h-10"
