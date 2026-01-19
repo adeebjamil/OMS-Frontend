@@ -109,6 +109,7 @@ export default function NotificationDropdown() {
       case 'task_completed':
         return <FileText className="h-5 w-5 text-blue-600" />;
       case 'message_received':
+      case 'new_message':
         return <MessageSquare className="h-5 w-5 text-purple-600" />;
       case 'evaluation_created':
         return <Award className="h-5 w-5 text-yellow-600" />;
@@ -118,6 +119,7 @@ export default function NotificationDropdown() {
       case 'leave_approved':
       case 'leave_rejected':
         return <Calendar className="h-5 w-5 text-green-600" />;
+      case 'worklog_submitted':
       case 'worklog_reviewed':
         return <Clock className="h-5 w-5 text-orange-600" />;
       default:
